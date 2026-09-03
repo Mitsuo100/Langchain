@@ -2,6 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
+from typing import Literal, TypedDict
 import os
 
 load_dotenv()
@@ -13,13 +14,39 @@ api_key=api_key,
 base_url="https://api.groq.com/openai/v1"
 )
 
-prompt_consultor = ChatPromptTemplate.from_messages(
+prompt_consultor_praia = ChatPromptTemplate.from_messages(
     [
-        ("system", "Você é um consultor de viagens"),
+        ("system", "Apresente-se como Sra Praia. Você é uma especialista em viagens com destinos para praia."),
         ("human", "{query}")
     ]
 )
 
-assistente = prompt_consultor | modelo | StrOutputParser()
+prompt_consultor_montanha = ChatPromptTemplate.from_messages(
+    [
+        ("system", "Apresente-se como Sr Montanha. Você é uma especialista em viagens com destinos para praia."),
+        ("human", "{query}")
+    ]
+)
 
-print(assistente.invoke({"query": "Quero férias em praias no Brasil."}))
+cadeia_praia = prompt_consultor_praia | modelo | StrOutputParser()
+cadeia_montanha = prompt_consultor_montanha | modelo | StrOutputParser()
+
+class Rota(TypedDict):
+    destino: Literal["praia", "montanha"]
+
+prompt_roteador = ChatPromptTemplate.from_messages(
+    [
+        ("system", "Responda apenas com 'praia' ou 'montanha'"),
+        ("human", "{query}")
+    ]
+)
+
+roteador = prompt_roteador | modelo.with_structured_output(Rota)
+
+def responda(pergunta: str):
+    rota = roteador.invoke({"query": pergunta})["destino"]
+    if rota == "praia":
+        return cadeia_praia.invoke({"query": pergunta})
+    return cadeia_montanha.invoke({"query": pergunta})
+
+print(responda("Quero surfar em um lugar quente"))

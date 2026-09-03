@@ -1,22 +1,27 @@
 from langchain_openai import ChatOpenAI
-
 from dotenv import load_dotenv
-
 import os
-
 from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
+from langchain.globals import set_debug
+from pydantic import Field, BaseModel
 
+set_debug(True)
 load_dotenv()
-
-from langchain_core.output_parsers import StrOutputParser
-
 api_key = os.getenv("GROQ_API_KEY")
+
+class Destino(BaseModel):
+    cidade:str = Field("A cidade recomendada para visitar")
+    motivo:str = Field("Motivo pelo qual é interessante visitar essa cidade")
+
+parseador = JsonOutputParser(pydantic_object = Destino)
 
 prompt_cidade = PromptTemplate(
         template="""
     Sugira uma cidade dado o meu interesse por {interesse}.
     """,
-    input_variables=["interesse"]
+    input_variables=["interesse"],
+    partial_variables={"formato_de_saida": parseador.get_format_instructions()}
 )
 
 modelo = ChatOpenAI(
@@ -31,4 +36,4 @@ resposta = cadeia.invoke({
     "interesse" : "praias"
 })
 
-print(resposta.content)
+print(resposta)
